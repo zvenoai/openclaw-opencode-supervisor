@@ -1,6 +1,6 @@
 {
   "name": "openclaw-opencode-supervisor",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "OpenCode supervisor plugin for OpenClaw - autonomous task execution with error handling",
   "type": "module",
   "main": "./index.ts",

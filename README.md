@@ -19,8 +19,8 @@ openclaw plugins install github:zvenoai/openclaw-opencode-supervisor
 After installation, configure the plugin in your OpenClaw config:
 
 ```bash
-openclaw config set plugins.opencode-supervisor.enabled true
-openclaw config set plugins.opencode-supervisor.config.password "your-opencode-password"
+openclaw config set plugins.openclaw-opencode-supervisor.enabled true
+openclaw config set plugins.openclaw-opencode-supervisor.config.password "your-opencode-password"
 ```
 
 Or edit `~/.openclaw/config.json`:
@@ -28,7 +28,7 @@ Or edit `~/.openclaw/config.json`:
 ```json
 {
   "plugins": {
-    "opencode-supervisor": {
+    "openclaw-opencode-supervisor": {
       "enabled": true,
       "config": {
         "apiUrl": "http://127.0.0.1:4096",
@@ -131,7 +131,7 @@ The plugin automatically detects and handles:
 openclaw plugins list
 
 # Check plugin status
-openclaw plugins info opencode-supervisor
+openclaw plugins info openclaw-opencode-supervisor
 ```
 
 ## License

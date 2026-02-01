@@ -1,5 +1,5 @@
 {
-  "id": "opencode-supervisor",
+  "id": "openclaw-opencode-supervisor",
   "name": "OpenCode Supervisor",
   "description": "Autonomous OpenCode task execution with automatic error handling and retry logic.",
   "configSchema": {
