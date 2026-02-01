@@ -1,6 +1,6 @@
 {
   "name": "openclaw-opencode-supervisor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "OpenCode supervisor plugin for OpenClaw - autonomous task execution with error handling",
   "type": "module",
   "main": "./index.ts",
@@ -27,6 +27,9 @@
     "url": "https://github.com/zvenoai/openclaw-opencode-supervisor/issues"
   },
   "homepage": "https://github.com/zvenoai/openclaw-opencode-supervisor#readme",
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.0"
+  },
   "openclaw": {
     "extensions": ["./index.ts"]
   }

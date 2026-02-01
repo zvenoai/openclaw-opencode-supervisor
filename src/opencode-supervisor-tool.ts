@@ -7,6 +7,9 @@
  * - Task completion verification
  */
 
+// TypeBox for OpenClaw-compatible parameter schema
+import { Type, type Static } from "@sinclair/typebox";
+
 type PluginConfig = {
   apiUrl?: string;
   username?: string;
@@ -56,7 +59,6 @@ function detectError(text: string): string | null {
   for (const pattern of ERROR_PATTERNS) {
     const match = text.match(pattern);
     if (match) {
-      // Extract error context (up to 200 chars around the match)
       const idx = text.indexOf(match[0]);
       const start = Math.max(0, idx - 50);
       const end = Math.min(text.length, idx + 150);
@@ -112,6 +114,25 @@ async function makeRequest<T>(params: {
   }
 }
 
+// Parameter schema using TypeBox (OpenClaw standard)
+const ToolParameters = Type.Object({
+  task: Type.String({
+    description: "Detailed task description. Be specific about what needs to be done."
+  }),
+  projectName: Type.Optional(
+    Type.String({
+      description: "Optional project name. Will be created in sandbox directory."
+    })
+  ),
+  continueOnError: Type.Optional(
+    Type.Boolean({
+      description: "Continue trying to fix errors automatically (default: true)"
+    })
+  ),
+});
+
+type ToolParams = Static<typeof ToolParameters>;
+
 export function createOpenCodeSupervisorTool(api: any) {
   const pluginConfig = (api.pluginConfig ?? {}) as PluginConfig;
 
@@ -132,24 +153,7 @@ The task runs in sandbox (${sandboxDir}) with access to credentials (${credentia
 Automatically handles errors and retries until task completion or max iterations.
 Use this for: creating projects, API integrations, code generation, browser automation.`,
 
-    parameters: {
-      type: "object",
-      properties: {
-        task: {
-          type: "string",
-          description: "Detailed task description. Be specific about what needs to be done.",
-        },
-        projectName: {
-          type: "string",
-          description: "Optional project name. Will be created in sandbox directory.",
-        },
-        continueOnError: {
-          type: "boolean",
-          description: "Continue trying to fix errors automatically (default: true)",
-        },
-      },
-      required: ["task"],
-    },
+    parameters: ToolParameters,
 
     async execute(_id: string, params: Record<string, unknown>) {
       const task = params.task as string;
@@ -160,7 +164,6 @@ Use this for: creating projects, API integrations, code generation, browser auto
       const projectName = params.projectName as string | undefined;
       const continueOnError = params.continueOnError !== false;
 
-      // Build initial prompt with context
       const projectPath = projectName
         ? `${sandboxDir}/${projectName}`
         : sandboxDir;
@@ -175,7 +178,6 @@ Use this for: creating projects, API integrations, code generation, browser auto
         "- Run and verify your code works before finishing",
       ].join("\n");
 
-      // Create session
       let sessionId: string;
       try {
         const sessionResp = await makeRequest<SessionResponse>({
@@ -225,7 +227,6 @@ Use this for: creating projects, API integrations, code generation, browser auto
             logs.push(`Response: ${responseText.slice(0, 500)}${responseText.length > 500 ? "..." : ""}`);
           }
 
-          // Check for errors in response
           const allText = [responseText, ...toolResults].join("\n");
           const detectedError = detectError(allText);
 
@@ -241,9 +242,7 @@ Use this for: creating projects, API integrations, code generation, browser auto
             continue;
           }
 
-          // Check if task looks complete
           if (finishReason === "stop" && !detectedError) {
-            // Look for success indicators
             const successIndicators = [
               /successfully/i,
               /completed/i,
@@ -261,7 +260,6 @@ Use this for: creating projects, API integrations, code generation, browser auto
               break;
             }
 
-            // Ask for verification
             currentPrompt = [
               "Please verify that the task is complete:",
               "1. Check that all files were created",
@@ -271,7 +269,6 @@ Use this for: creating projects, API integrations, code generation, browser auto
             continue;
           }
 
-          // If finish reason is not stop, something went wrong
           if (finishReason !== "stop") {
             if (continueOnError && iteration < maxIterations) {
               currentPrompt = `The previous request ended with status "${finishReason}". Please continue with the task.`;
@@ -282,7 +279,6 @@ Use this for: creating projects, API integrations, code generation, browser auto
         } catch (err) {
           logs.push(`Request error: ${err}`);
           if (continueOnError && iteration < maxIterations) {
-            // Wait a bit and retry
             await new Promise((r) => setTimeout(r, 2000));
             currentPrompt = `There was a connection error. Please continue with the task: ${task}`;
             continue;
@@ -291,7 +287,6 @@ Use this for: creating projects, API integrations, code generation, browser auto
         }
       }
 
-      // Build final result
       const finalText = lastResponse ? extractTextFromResponse(lastResponse) : "";
       const status = taskCompleted ? "completed" : `stopped after ${iteration} iterations`;
 
