@@ -1,0 +1,45 @@
+{
+  "id": "opencode-supervisor",
+  "name": "OpenCode Supervisor",
+  "description": "Autonomous OpenCode task execution with automatic error handling and retry logic.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "apiUrl": {
+        "type": "string",
+        "description": "OpenCode HTTP API URL",
+        "default": "http://127.0.0.1:4096"
+      },
+      "username": {
+        "type": "string",
+        "description": "Basic auth username",
+        "default": "opencode"
+      },
+      "password": {
+        "type": "string",
+        "description": "Basic auth password"
+      },
+      "sandboxDir": {
+        "type": "string",
+        "description": "Sandbox directory for code execution",
+        "default": "/root/clawd/sandbox"
+      },
+      "credentialsDir": {
+        "type": "string",
+        "description": "Read-only credentials directory",
+        "default": "/root/clawd/credentials"
+      },
+      "maxIterations": {
+        "type": "integer",
+        "description": "Maximum retry iterations for error handling",
+        "default": 5
+      },
+      "timeoutMs": {
+        "type": "integer",
+        "description": "Timeout per API call in milliseconds",
+        "default": 120000
+      }
+    }
+  }
+}
