@@ -1,6 +1,13 @@
 # OpenCode Supervisor Plugin for OpenClaw
 
-Autonomous task execution via OpenCode HTTP API with automatic error handling and retry logic.
+Autonomous task execution via OpenCode HTTP API with **reliable verification** through actual file changes.
+
+## What's New in v1.1.3
+
+- **Reliable error detection**: Uses exit codes instead of text pattern matching
+- **Change verification**: Confirms task completion via `/session/:id/diff` API
+- **No false positives**: Doesn't mistake code containing "Error" for actual errors
+- **Progress tracking**: Detects when model isn't making changes and prompts accordingly
 
 ## Installation
 
@@ -36,8 +43,8 @@ Or edit `~/.openclaw/config.json`:
         "password": "openclaw2026",
         "sandboxDir": "/root/clawd/sandbox",
         "credentialsDir": "/root/clawd/credentials",
-        "maxIterations": 5,
-        "timeoutMs": 120000
+        "maxIterations": 50,
+        "timeoutMs": 180000
       }
     }
   }
@@ -59,8 +66,8 @@ openclaw gateway restart
 | password | string | - | Basic auth password |
 | sandboxDir | string | `/root/clawd/sandbox` | Sandbox directory for code |
 | credentialsDir | string | `/root/clawd/credentials` | Credentials directory (read-only) |
-| maxIterations | integer | `5` | Max retry iterations |
-| timeoutMs | integer | `120000` | Timeout per API call (ms) |
+| maxIterations | integer | `50` | Max iterations before stopping |
+| timeoutMs | integer | `180000` | Timeout per API call (3 min) |
 
 ## Usage
 
@@ -71,7 +78,7 @@ The plugin registers an `opencode_task` tool that the agent uses automatically w
 ```
 "Create a Node.js project that connects to BCMS API"
 
-"Write a Python script to fetch data from Google Sheets"
+"Refactor the Python scripts to use python-dotenv"
 
 "Build a web scraper for product prices"
 ```
@@ -84,8 +91,8 @@ The agent can call the tool directly:
 {
   "tool": "opencode_task",
   "params": {
-    "task": "Create a Node.js project that reads from Google Sheets API",
-    "projectName": "sheets-reader",
+    "task": "Refactor knowledge_factory.py to use .env and add type hints",
+    "projectName": "knowledge-factory",
     "continueOnError": true
   }
 }
@@ -101,22 +108,46 @@ The agent can call the tool directly:
 
 ## How It Works
 
-1. **Session Creation**: Creates a new OpenCode session via HTTP API
-2. **Task Execution**: Sends the task with sandbox context
-3. **Error Detection**: Monitors response for common error patterns
-4. **Auto-Retry**: On error, sends follow-up request to fix
-5. **Verification**: Confirms task completion before returning
-6. **Result**: Returns detailed output with execution logs
+```
+1. Create Session     POST /session
+         ↓
+2. Send Task          POST /session/:id/message
+         ↓
+3. Check Response
+   ├── Tool exit code ≠ 0? → Send fix prompt
+   └── finish = "stop"?
+         ↓
+4. Verify Changes     GET /session/:id (summary.files > 0?)
+   ├── files > 0 → ✅ Success
+   └── files = 0 → Prompt to make changes
+         ↓
+5. Get Diff           GET /session/:id/diff
+         ↓
+6. Return Result with file changes summary
+```
 
-## Error Detection
+## Reliable Indicators
 
-The plugin automatically detects and handles:
+The plugin uses **only reliable indicators**:
 
-- JavaScript/TypeScript errors (TypeError, SyntaxError, ReferenceError)
-- File system errors (ENOENT, EACCES, permission denied)
-- HTTP errors (401, 403, 404, 500)
-- Module resolution errors (Cannot find module)
-- Runtime errors (is not defined, is not a function)
+| Indicator | Source | Use |
+|-----------|--------|-----|
+| Exit code | `tool.state.metadata.exit` | Error detection (≠ 0 = error) |
+| File count | `session.summary.files` | Task completion verification |
+| Diff | `/session/:id/diff` | Actual changes made |
+
+**Not used** (unreliable):
+- Text pattern matching (e.g., `/Error:/i`)
+- "TASK_COMPLETE" marker in model output
+
+## Task Status
+
+| Status | Meaning |
+|--------|---------|
+| ✅ `completed` | Files changed, task done |
+| ⚠️ `completed_no_changes` | Model finished but no files changed |
+| ❌ `failed` | Tool errors (non-zero exit codes) |
+| ⏱️ `max_iterations` | Stopped after max attempts |
 
 ## Requirements
 
